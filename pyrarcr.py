@@ -12,6 +12,7 @@
 import time,os,sys,itertools, re
 from multiprocessing import Pool
 import subprocess
+from zipfile import ZipFile
 
 name=os.path.basename(__file__)
 
@@ -27,17 +28,22 @@ def unrar(guessPass):
 	(stdout, stderr) = proc.communicate()
 	if not stderr:
 		print("Found password:",repr(guessPass))
+		global start
+		print "It took "+str(time.time-start)+" seconds"
 		return True, guessPass
 	return False, guessPass
 
 def unzip(guessPass):
 	global fileName
-	cmd = ["7za", "t", "-y" ,"-p"+guessPass, fileName]
-	proc = subprocess.Popen( cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
-	(stdout, stderr) = proc.communicate()
-	if re.match('.+?Everything is Ok',stdout, re.S):
-		print("Found password:",repr(guessPass))
-		return True, guessPass
+	okOutput = '0\n'
+	cmd='7za t -y -p'+guessPass+' '+fileName+' > /dev/null ;echo $?'
+	kf=os.popen(cmd)
+	for rkf in kf.readlines():
+		if rkf == okOutput:
+			print("Found password:",repr(guessPass))
+			print("It took",round(time.time()-start,3),"seconds")
+			print("Exiting...")
+			return True, guessPass
 	return False, guessPass
 
 
@@ -45,7 +51,7 @@ def unzip(guessPass):
 def rc(rf, alphabet, numOfThreads):
 	tryn=0
 	counterTmp = 0
-	printCounter = 100
+	printCounter = 1000
 	listBasic = []
 	if rf.endswith('.rar'):
 		funcChosen = unrar
@@ -57,26 +63,33 @@ def rc(rf, alphabet, numOfThreads):
 			k=re.escape(k)
 			listBasic.append(k)
 			tryn+=1
-			#tryn+=len(listBasic)
-			counterTmp+=1
-			if counterTmp >= printCounter:
-				print ('Trying combination number '+str(tryn)+':'+str(k))
-				timeWasted = round(time.time()-start,2)
-				if timeWasted > 0:
-					print("It took already ",timeWasted,"seconds. Speed: ",round(tryn/float(timeWasted),2)," passwords/sec")
-				counterTmp=0
 			if len(listBasic) == numOfThreads:
 				pool = Pool(numOfThreads)
-				result=pool.map(funcChosen, listBasic)
+				pool.map_async(funcChosen, listBasic, callback = exitPass)
 				pool.close()
-				pool.join()
-				for i in result:
-					if True in i:
-						print 'Found! Password is '+result[result.index(i)][1]
-						print("It took",round(time.time()-start,3),"seconds")
-						exit()
+				if resultPass:
+					timeWasted = time.time()-start
+					print 'Found! Password is '+resultPass
+					print "It took " +str(round(time.time()-start,3))+" seconds"
+					print "Speed: "+str(round(tryn/float(timeWasted),2))+" passwords/sec"
+					print "Tried "+str(tryn)+" passwords"
+					exit()
 				listBasic = []
+			counterTmp+=1
+			if counterTmp >= printCounter:
+				print 'Trying combination number '+str(tryn)+':'+str(k)
+				timeWasted = round(time.time()-start,2)
+				if timeWasted > 0:
+					print "It took already " +str(timeWasted) +" seconds. Speed: "+str(round(tryn/float(timeWasted),2))+" passwords/sec"
+				counterTmp=0
 
+def exitPass(result):
+	for results in result:
+		if True in results:
+			global resultPass
+			resultPass = results[1]
+
+resultPass = None
 defaultAlphabet = "aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ1234567890"
 defaultThreadNumbers= 2
 name = sys.argv[0]
@@ -107,3 +120,15 @@ if argLen >= 2:
 			print(helpMessage)
 else:
 	print(helpMessage)
+
+
+def fucsia (fileName, passwd):
+	start = time.time()
+	with ZipFile(fileName, 'r') as myzip:
+		try:
+			myzip.extractall('/tmp', None, passwd)
+		except Exception as error:
+			print str(error)
+			print 'senha podre'
+	print (time.time()-start)
+
