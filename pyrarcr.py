@@ -68,7 +68,6 @@ def rc(rf, alphabet, numOfThreads):
 	if rf.endswith('.rar'):
 		funcChosen = unrar
 	elif rf.endswith('.zip') or rf.endswith('.7z') :
-		#funcChosen = unzip
 		funcChosen = zipFileUnzip
 	for a in range(1,len(alphabet)+1):
 		for b in itertools.product(alphabet,repeat=a):
