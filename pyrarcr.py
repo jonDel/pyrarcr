@@ -21,6 +21,18 @@ if os.name!="posix":
 	print("ERROR:",name,"isn't compatible with your system.")
 	sys.exit(-1)
 
+def zipFileUnzip (passwd):
+	global fileName
+	with ZipFile(fileName, 'r') as myzip:
+		try:
+			myzip.extractall('/tmp', None, passwd)
+			ret = True
+		except:
+			ret = False
+		else:
+			ret = True
+	return ret, passwd
+
 def unrar(guessPass):
 	global fileName
 	cmd = ["unrar", "t", "-y" ,"-p"+guessPass, fileName]
@@ -29,7 +41,7 @@ def unrar(guessPass):
 	if not stderr:
 		print("Found password:",repr(guessPass))
 		global start
-		print "It took "+str(time.time-start)+" seconds"
+		print "It took "+str(time.time()-start)+" seconds"
 		return True, guessPass
 	return False, guessPass
 
@@ -56,7 +68,8 @@ def rc(rf, alphabet, numOfThreads):
 	if rf.endswith('.rar'):
 		funcChosen = unrar
 	elif rf.endswith('.zip') or rf.endswith('.7z') :
-		funcChosen = unzip
+		#funcChosen = unzip
+		funcChosen = zipFileUnzip
 	for a in range(1,len(alphabet)+1):
 		for b in itertools.product(alphabet,repeat=a):
 			k="".join(b)
@@ -122,13 +135,4 @@ else:
 	print(helpMessage)
 
 
-def fucsia (fileName, passwd):
-	start = time.time()
-	with ZipFile(fileName, 'r') as myzip:
-		try:
-			myzip.extractall('/tmp', None, passwd)
-		except Exception as error:
-			print str(error)
-			print 'senha podre'
-	print (time.time()-start)
 
